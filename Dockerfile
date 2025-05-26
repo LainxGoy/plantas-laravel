@@ -20,6 +20,17 @@ COPY . /var/www/html
 # Establece el directorio de trabajo
 WORKDIR /var/www/html
 
+# Prepara entorno Laravel: copia .env, genera archivo SQLite
+RUN cp .env.example .env \
+    && mkdir -p database \
+    && touch database/database.sqlite
+
+# Variables de entorno para SQLite
+ENV DB_CONNECTION=sqlite
+ENV DB_DATABASE=/var/www/html/database/database.sqlite
+ENV APP_ENV=production
+ENV APP_DEBUG=false
+
 # Instala dependencias de PHP, genera key, migra y hace seed de la base
 RUN composer install --no-dev --optimize-autoloader && \
     php artisan key:generate && \
