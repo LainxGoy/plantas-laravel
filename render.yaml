@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: plantas-laravel
+    env: docker
+    plan: free
+    envVars:
+      - key: APP_KEY
+        value: base64:GQ3q03bumPdyPBlceOOog3bjqpQDxTF7HkQYB3S0byI=
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: DB_CONNECTION
+        value: sqlite
+      - key: DB_DATABASE
+        value: /tmp/database.sqlite
