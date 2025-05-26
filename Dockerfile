@@ -1,30 +1,28 @@
-# Usa una imagen oficial de PHP con Apache y extensiones necesarias
 FROM php:8.2-apache
 
-# Instala dependencias del sistema, extensiones de PHP y Composer
+# Instala dependencias necesarias
 RUN apt-get update && apt-get install -y \
-    git \
-    unzip \
-    libzip-dev \
-    libpng-dev \
-    sqlite3 \
-    && docker-php-ext-install pdo pdo_mysql zip
+    libzip-dev unzip git curl && \
+    docker-php-ext-install zip pdo pdo_mysql
+
+# Habilita mod_rewrite de Apache
+RUN a2enmod rewrite
+
+# Copia archivos al contenedor
+COPY . /var/www/html
+
+# Establece el DocumentRoot al directorio public de Laravel
+ENV APACHE_DOCUMENT_ROOT /var/www/html/public
+
+# Actualiza la configuración de Apache para usar el nuevo DocumentRoot
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/000-default.conf
+
+# Da permisos
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html
 
 # Instala Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copia los archivos del proyecto al contenedor
-COPY . /var/www/html
-
-# Establece el working directory
 WORKDIR /var/www/html
 
-# Da permisos a Laravel para escribir en ciertas carpetas
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
-
-# Expone el puerto por defecto de Apache
-EXPOSE 80
-
-# Comando para iniciar Apache
-CMD ["apache2-foreground"]
