@@ -1,52 +1,66 @@
 # Dockerfile
 
-# Usa imagen oficial de PHP con Apache
+# Base image: PHP 8.2 with Apache
 FROM php:8.2-apache
 
-# Instala dependencias del sistema y extensiones de PHP necesarias
+# Install system dependencies and PHP extensions required by Laravel
 RUN apt-get update && apt-get install -y \
-    libzip-dev unzip git curl sqlite3 \
-    && docker-php-ext-install zip pdo pdo_mysql
+    git \
+    curl \
+    unzip \
+    libzip-dev \
+    libpng-dev \
+    libonig-dev \
+    sqlite3 \
+    && docker-php-ext-install \
+    pdo \
+    pdo_mysql \
+    zip \
+    mbstring \
+    exif \
+    pcntl \
+    bcmath \
+    xml
 
-# Habilita mod_rewrite en Apache
-RUN a2enmod rewrite
+# Enable Apache modules
+RUN a2enmod rewrite headers
 
-# Copia Composer desde la imagen oficial de Composer
+# Copy Composer from the official Composer image
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copia todos los archivos del proyecto al contenedor
-COPY . /var/www/html
-
-# Establece el directorio de trabajo
+# Set working directory
 WORKDIR /var/www/html
 
-# Prepara entorno Laravel: copia .env, genera archivo SQLite
+# Copy project files
+COPY . /var/www/html
+
+# Prepare environment: copy example env and create SQLite database
 RUN cp .env.example .env \
     && mkdir -p database \
     && touch database/database.sqlite
 
-# Variables de entorno para SQLite
-ENV DB_CONNECTION=sqlite
-ENV DB_DATABASE=/var/www/html/database/database.sqlite
+# Set environment variables for Laravel
 ENV APP_ENV=production
 ENV APP_DEBUG=false
+ENV DB_CONNECTION=sqlite
+ENV DB_DATABASE=/var/www/html/database/database.sqlite
 
-# Instala dependencias de PHP, genera key, migra y hace seed de la base
+# Install PHP dependencies, generate app key, run migrations and seeders
 RUN composer install --no-dev --optimize-autoloader && \
     php artisan key:generate && \
     php artisan migrate --force && \
     php artisan db:seed --force
 
-# Configura Apache para usar el directorio public de Laravel como DocumentRoot
-ENV APACHE_DOCUMENT_ROOT /var/www/html/public
+# Configure Apache to serve from the public directory
+ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 RUN sed -ri -e "s!DocumentRoot /var/www/html!DocumentRoot ${APACHE_DOCUMENT_ROOT}!" /etc/apache2/sites-available/000-default.conf
 
-# Ajusta permisos para que Apache pueda escribir
+# Adjust permissions
 RUN chown -R www-data:www-data /var/www/html && \
     chmod -R 755 /var/www/html
 
-# Expone el puerto 80
+# Expose port 80
 EXPOSE 80
 
-# Arranca Apache en primer plano
+# Start Apache in foreground
 CMD ["apache2-foreground"]
